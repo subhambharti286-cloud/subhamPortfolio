@@ -1,0 +1,5 @@
+# Local OS & editor files
+.DS_Store
+Thumbs.db
+*.log
+*.tmp

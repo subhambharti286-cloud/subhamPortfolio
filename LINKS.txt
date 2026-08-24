@@ -1,0 +1,15 @@
+﻿==================================================
+  CINEEDIT STUDIO - PORTFOLIO QUICK ACCESS LINKS
+==================================================
+
+Primary URL:
+http://localhost:8080/
+
+Secondary URL:
+http://localhost:3000/
+
+How to start the server anytime:
+Double-click 'start_server.bat' in this folder!
+
+Project Folder:
+C:\Users\acer\.gemini\antigravity\scratch\scroll-animation\

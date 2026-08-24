@@ -1,0 +1,719 @@
+(() => {
+  const FRAME_COUNT = 240;
+  const FRAME_PREFIX = "frames/frame_";
+  const FRAME_EXT = ".png";
+  const PAD_LENGTH = 6;
+
+  // Default Physics Parameters
+  const DEFAULTS = {
+    lerpFactor: 0.12,
+    trackHeightVh: 550,
+    easing: "linear",
+    isInverted: false,
+    autoPlay: false,
+    autoPlaySpeed: 1.0,
+  };
+
+  const PRESETS = {
+    apple: { lerpFactor: 0.12, trackHeightVh: 550, easing: "linear" },
+    snappy: { lerpFactor: 0.28, trackHeightVh: 350, easing: "linear" },
+    cinematic: { lerpFactor: 0.045, trackHeightVh: 850, easing: "smoothstep" },
+    slowmo: { lerpFactor: 0.08, trackHeightVh: 1300, easing: "linear" },
+  };
+
+  // State
+  let physics = { ...DEFAULTS };
+  let currentProgress = 0;
+  let targetProgress = 0;
+  let lastProgress = 0;
+  let lastRenderedIndex = -1;
+  let isReady = false;
+  let autoPlayDirection = 1;
+
+  // Telemetry metrics
+  let frameTimes = [];
+  let currentFps = 60;
+  let scrubVelocity = 0;
+
+  // DOM Elements
+  const canvas = document.getElementById("animation-canvas");
+  const ctx = canvas.getContext("2d", { alpha: false });
+  const loader = document.getElementById("loader");
+  const progressBar = document.getElementById("progress-bar");
+  const progressText = document.getElementById("progress-text");
+  const scrollCue = document.getElementById("scroll-cue");
+  const scrollTrack = document.getElementById("scroll-track");
+
+  // HUD Elements
+  const hud = document.getElementById("physics-hud");
+  const hudToggleBtn = document.getElementById("hud-toggle-btn");
+  const hudCloseBtn = document.getElementById("hud-close-btn");
+  const presetButtons = document.querySelectorAll(".preset-btn");
+  const lerpSlider = document.getElementById("lerp-slider");
+  const lerpVal = document.getElementById("lerp-val");
+  const trackHeightSlider = document.getElementById("track-height-slider");
+  const trackHeightVal = document.getElementById("track-height-val");
+  const easingSelect = document.getElementById("easing-select");
+  const autoplayToggle = document.getElementById("autoplay-toggle");
+  const autoplaySpeedControl = document.getElementById("autoplay-speed-control");
+  const autoplaySpeedSlider = document.getElementById("autoplay-speed");
+  const autoplaySpeedVal = document.getElementById("autoplay-speed-val");
+  const invertToggle = document.getElementById("invert-toggle");
+  const resetBtn = document.getElementById("reset-btn");
+  const jumpStartBtn = document.getElementById("jump-start-btn");
+  const jumpEndBtn = document.getElementById("jump-end-btn");
+
+  // Telemetry DOM
+  const telemFrame = document.getElementById("telem-frame");
+  const telemProgress = document.getElementById("telem-progress");
+  const telemFps = document.getElementById("telem-fps");
+  const telemVelocity = document.getElementById("telem-velocity");
+
+  const images = new Array(FRAME_COUNT);
+  let loadedCount = 0;
+  let canvasWidth = 0;
+  let canvasHeight = 0;
+  let dpr = 1;
+
+  function getFramePath(index) {
+    return `${FRAME_PREFIX}${String(index).padStart(PAD_LENGTH, "0")}${FRAME_EXT}`;
+  }
+
+  function preloadImages() {
+    return new Promise((resolve) => {
+      for (let i = 0; i < FRAME_COUNT; i++) {
+        const img = new Image();
+        img.src = getFramePath(i);
+
+        img.onload = () => {
+          loadedCount++;
+          updateLoaderProgress();
+          if (i === 0 && !isReady) {
+            renderFrame(0);
+          }
+          if (loadedCount === FRAME_COUNT) {
+            resolve();
+          }
+        };
+
+        img.onerror = () => {
+          console.warn(`Failed to load frame: ${getFramePath(i)}`);
+          loadedCount++;
+          updateLoaderProgress();
+          if (loadedCount === FRAME_COUNT) {
+            resolve();
+          }
+        };
+
+        images[i] = img;
+      }
+    });
+  }
+
+  function updateLoaderProgress() {
+    const percent = Math.min(100, Math.floor((loadedCount / FRAME_COUNT) * 100));
+    if (progressBar) progressBar.style.width = `${percent}%`;
+    if (progressText) progressText.textContent = `${percent}%`;
+  }
+
+  function resizeCanvas() {
+    dpr = window.devicePixelRatio || 1;
+    canvasWidth = window.innerWidth;
+    canvasHeight = window.innerHeight;
+
+    canvas.width = Math.floor(canvasWidth * dpr);
+    canvas.height = Math.floor(canvasHeight * dpr);
+    canvas.style.width = `${canvasWidth}px`;
+    canvas.style.height = `${canvasHeight}px`;
+
+    ctx.scale(dpr, dpr);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+
+    lastRenderedIndex = -1;
+    if (images[0] && images[0].complete) {
+      renderFrame(Math.min(FRAME_COUNT - 1, Math.max(0, Math.round(currentProgress * (FRAME_COUNT - 1)))));
+    }
+  }
+
+  function renderFrame(index) {
+    const img = images[index];
+    if (!img || !img.complete || img.naturalWidth === 0) return;
+
+    const imgWidth = img.naturalWidth;
+    const imgHeight = img.naturalHeight;
+
+    const scale = Math.max(canvasWidth / imgWidth, canvasHeight / imgHeight);
+    const drawWidth = imgWidth * scale;
+    const drawHeight = imgHeight * scale;
+    const offsetX = (canvasWidth - drawWidth) / 2;
+    const offsetY = (canvasHeight - drawHeight) / 2;
+
+    ctx.fillStyle = "#070709";
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+    ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+
+    lastRenderedIndex = index;
+  }
+
+  // Easing Functions
+  function applyEasing(t, type) {
+    const clamped = Math.min(1, Math.max(0, t));
+    switch (type) {
+      case "smoothstep":
+        return clamped * clamped * (3 - 2 * clamped);
+      case "easeOutQuad":
+        return 1 - (1 - clamped) * (1 - clamped);
+      case "linear":
+      default:
+        return clamped;
+    }
+  }
+
+  function calculateRawScrollProgress() {
+    const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+    if (maxScroll <= 0) return 0;
+    let norm = Math.min(1, Math.max(0, window.scrollY / maxScroll));
+    if (physics.isInverted) {
+      norm = 1 - norm;
+    }
+    return norm;
+  }
+
+  function setScrollProgress(progress) {
+    const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+    const p = physics.isInverted ? 1 - progress : progress;
+    window.scrollTo({ top: p * maxScroll, behavior: "instant" });
+  }
+
+  function updateTrackHeight(vh) {
+    physics.trackHeightVh = vh;
+    if (scrollTrack) {
+      const prevProgress = currentProgress;
+      scrollTrack.style.height = `${vh}vh`;
+      // Maintain approximate view position
+      setScrollProgress(prevProgress);
+    }
+    if (trackHeightVal) trackHeightVal.textContent = `${vh}vh`;
+    if (trackHeightSlider) trackHeightSlider.value = vh;
+  }
+
+  function applyPreset(presetKey) {
+    const preset = PRESETS[presetKey];
+    if (!preset) return;
+
+    physics.lerpFactor = preset.lerpFactor;
+    physics.easing = preset.easing;
+    updateTrackHeight(preset.trackHeightVh);
+
+    if (lerpSlider) lerpSlider.value = physics.lerpFactor;
+    if (lerpVal) lerpVal.textContent = physics.lerpFactor.toFixed(2);
+    if (easingSelect) easingSelect.value = physics.easing;
+
+    presetButtons.forEach((btn) => {
+      btn.classList.toggle("active", btn.getAttribute("data-preset") === presetKey);
+    });
+  }
+
+  function checkCustomPreset() {
+    let matched = null;
+    for (const [key, p] of Object.entries(PRESETS)) {
+      if (
+        Math.abs(p.lerpFactor - physics.lerpFactor) < 0.001 &&
+        p.trackHeightVh === physics.trackHeightVh &&
+        p.easing === physics.easing
+      ) {
+        matched = key;
+        break;
+      }
+    }
+    presetButtons.forEach((btn) => {
+      btn.classList.toggle("active", btn.getAttribute("data-preset") === matched);
+    });
+  }
+
+  function updateTelemetry(now) {
+    // FPS Calculation
+    frameTimes.push(now);
+    if (frameTimes.length > 30) {
+      frameTimes.shift();
+    }
+    if (frameTimes.length > 1) {
+      const deltaSec = (frameTimes[frameTimes.length - 1] - frameTimes[0]) / 1000;
+      currentFps = Math.round((frameTimes.length - 1) / deltaSec);
+    }
+
+    // Velocity
+    scrubVelocity = Math.abs(currentProgress - lastProgress);
+    lastProgress = currentProgress;
+
+    const frameIdx = Math.min(
+      FRAME_COUNT - 1,
+      Math.max(0, Math.round(currentProgress * (FRAME_COUNT - 1)))
+    );
+
+    if (telemFrame) {
+      telemFrame.textContent = `${String(frameIdx).padStart(3, "0")} / ${FRAME_COUNT - 1}`;
+    }
+    if (telemProgress) {
+      telemProgress.textContent = `${(currentProgress * 100).toFixed(1)}%`;
+    }
+    if (telemFps) {
+      telemFps.textContent = `${currentFps}`;
+    }
+    if (telemVelocity) {
+      telemVelocity.textContent = scrubVelocity.toFixed(4);
+    }
+  }
+
+  function tick(timestamp) {
+    if (physics.autoPlay) {
+      // Auto-loop scrubber
+      const speedDelta = (0.0025 * physics.autoPlaySpeed);
+      let nextP = currentProgress + (speedDelta * autoPlayDirection);
+      if (nextP >= 1) {
+        nextP = 1;
+        autoPlayDirection = -1;
+      } else if (nextP <= 0) {
+        nextP = 0;
+        autoPlayDirection = 1;
+      }
+      setScrollProgress(nextP);
+      targetProgress = nextP;
+    } else {
+      const rawProgress = calculateRawScrollProgress();
+      targetProgress = applyEasing(rawProgress, physics.easing);
+    }
+
+    // Lerp Physics Engine
+    currentProgress += (targetProgress - currentProgress) * physics.lerpFactor;
+
+    if (Math.abs(targetProgress - currentProgress) < 0.0001) {
+      currentProgress = targetProgress;
+    }
+
+    const targetFrameIndex = Math.min(
+      FRAME_COUNT - 1,
+      Math.max(0, Math.round(currentProgress * (FRAME_COUNT - 1)))
+    );
+
+    if (targetFrameIndex !== lastRenderedIndex) {
+      renderFrame(targetFrameIndex);
+    }
+
+    // Update Telemetry
+    updateTelemetry(timestamp || performance.now());
+
+    // Toggle scroll cue
+    if (scrollCue) {
+      if (window.scrollY > 40 || physics.autoPlay) {
+        scrollCue.classList.add("hidden");
+      } else {
+        scrollCue.classList.remove("hidden");
+      }
+    }
+
+    requestAnimationFrame(tick);
+  }
+
+  // Bind HUD & Controls
+  function initControls() {
+    // HUD Toggle
+    const toggleHud = () => {
+      const isMin = hud.classList.toggle("minimized");
+      hudToggleBtn.classList.toggle("active", !isMin);
+    };
+
+    if (hudToggleBtn) hudToggleBtn.addEventListener("click", toggleHud);
+    if (hudCloseBtn) hudCloseBtn.addEventListener("click", toggleHud);
+
+    // Presets
+    presetButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const pKey = btn.getAttribute("data-preset");
+        applyPreset(pKey);
+      });
+    });
+
+    // Lerp Slider
+    if (lerpSlider) {
+      lerpSlider.addEventListener("input", (e) => {
+        physics.lerpFactor = parseFloat(e.target.value);
+        if (lerpVal) lerpVal.textContent = physics.lerpFactor.toFixed(2);
+        checkCustomPreset();
+      });
+    }
+
+    // Track Height Slider
+    if (trackHeightSlider) {
+      trackHeightSlider.addEventListener("input", (e) => {
+        const val = parseInt(e.target.value, 10);
+        updateTrackHeight(val);
+        checkCustomPreset();
+      });
+    }
+
+    // Easing Dropdown
+    if (easingSelect) {
+      easingSelect.addEventListener("change", (e) => {
+        physics.easing = e.target.value;
+        checkCustomPreset();
+      });
+    }
+
+    // Auto Play Toggle
+    if (autoplayToggle) {
+      autoplayToggle.addEventListener("change", (e) => {
+        physics.autoPlay = e.target.checked;
+        if (autoplaySpeedControl) {
+          autoplaySpeedControl.classList.toggle("hidden", !physics.autoPlay);
+        }
+      });
+    }
+
+    // Auto Play Speed
+    if (autoplaySpeedSlider) {
+      autoplaySpeedSlider.addEventListener("input", (e) => {
+        physics.autoPlaySpeed = parseFloat(e.target.value);
+        if (autoplaySpeedVal) autoplaySpeedVal.textContent = `${physics.autoPlaySpeed.toFixed(1)}x`;
+      });
+    }
+
+    // Invert Toggle
+    if (invertToggle) {
+      invertToggle.addEventListener("change", (e) => {
+        physics.isInverted = e.target.checked;
+      });
+    }
+
+    // Navigation Jump Buttons
+    if (jumpStartBtn) {
+      jumpStartBtn.addEventListener("click", () => {
+        setScrollProgress(0);
+      });
+    }
+
+    if (jumpEndBtn) {
+      jumpEndBtn.addEventListener("click", () => {
+        setScrollProgress(1);
+      });
+    }
+
+    // Reset Defaults
+    const resetDefaults = () => {
+      physics = { ...DEFAULTS };
+      applyPreset("apple");
+      if (invertToggle) invertToggle.checked = false;
+      if (autoplayToggle) {
+        autoplayToggle.checked = false;
+        autoplaySpeedControl.classList.add("hidden");
+      }
+    };
+
+    if (resetBtn) resetBtn.addEventListener("click", resetDefaults);
+
+    // Keyboard Shortcuts
+    window.addEventListener("keydown", (e) => {
+      // Don't trigger when typing in inputs/selects
+      if (["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement.tagName)) {
+        return;
+      }
+
+      if (e.key === "h" || e.key === "H") {
+        e.preventDefault();
+        toggleHud();
+      } else if (e.code === "Space") {
+        e.preventDefault();
+        if (autoplayToggle) {
+          autoplayToggle.checked = !autoplayToggle.checked;
+          autoplayToggle.dispatchEvent(new Event("change"));
+        }
+      } else if (e.key === "r" || e.key === "R") {
+        e.preventDefault();
+        resetDefaults();
+      } else if (e.key === "ArrowDown" || e.key === "ArrowRight") {
+        e.preventDefault();
+        const nextIdx = Math.min(FRAME_COUNT - 1, Math.round(currentProgress * (FRAME_COUNT - 1)) + 1);
+        setScrollProgress(nextIdx / (FRAME_COUNT - 1));
+      } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
+        e.preventDefault();
+        const prevIdx = Math.max(0, Math.round(currentProgress * (FRAME_COUNT - 1)) - 1);
+        setScrollProgress(prevIdx / (FRAME_COUNT - 1));
+      }
+    });
+  }
+
+  // Cinematic Video Showcase Player Controller
+  function initProjectModals() {
+    const projectModal = document.getElementById("project-modal");
+    const modalCloseBtn = document.getElementById("modal-close-btn");
+    const openBtns = document.querySelectorAll(".btn-open-project-modal, #start-project-btn, #footer-showreel-btn");
+    const playlistItems = document.querySelectorAll(".playlist-item-card");
+    const videoPlayer = document.getElementById("main-video-player");
+    const videoSource = document.getElementById("video-source");
+    const mainTitle = document.getElementById("showcase-main-title");
+    const mainDesc = document.getElementById("showcase-main-desc");
+    const statusBadge = document.getElementById("showcase-status-badge");
+
+    // Open Video Player Modal
+    const openVideoModal = (src, poster, title, badge, desc) => {
+      if (src && videoPlayer) {
+        if (videoSource) videoSource.src = src;
+        videoPlayer.src = src;
+        if (poster) videoPlayer.poster = poster;
+        if (mainTitle && title) mainTitle.textContent = title;
+        if (statusBadge && badge) statusBadge.textContent = badge;
+        if (mainDesc && desc) mainDesc.textContent = desc;
+        videoPlayer.load();
+        const playPromise = videoPlayer.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {
+            // Auto-play was prevented, muted fallback or user will press play
+          });
+        }
+      }
+      if (projectModal) {
+        projectModal.classList.add("open");
+        document.body.style.overflow = "hidden";
+        const viralPlayer = document.getElementById("viral-reel-player");
+        if (viralPlayer) viralPlayer.pause();
+        const theaterPlayer = document.getElementById("theater-reel-player");
+        if (theaterPlayer) theaterPlayer.pause();
+        const cinematicPlayer = document.getElementById("cinematic-title-player");
+        if (cinematicPlayer) cinematicPlayer.pause();
+        const launchPlayer = document.getElementById("launch-promo-player");
+        if (launchPlayer) launchPlayer.pause();
+      }
+    };
+
+    // Close Video Player Modal
+    const closeVideoModal = () => {
+      if (projectModal) {
+        projectModal.classList.remove("open");
+        document.body.style.overflow = "";
+      }
+      if (videoPlayer) {
+        videoPlayer.pause();
+      }
+    };
+
+    openBtns.forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        if (e) e.preventDefault();
+        // Play active playlist item or default item
+        const activeItem = document.querySelector(".playlist-item-card.active") || playlistItems[0];
+        if (activeItem) {
+          const src = activeItem.getAttribute("data-video-src");
+          const poster = activeItem.getAttribute("data-poster");
+          const title = activeItem.getAttribute("data-title");
+          const badge = activeItem.getAttribute("data-badge");
+          const desc = activeItem.getAttribute("data-desc");
+          openVideoModal(src, poster, title, badge, desc);
+        } else {
+          openVideoModal();
+        }
+      });
+    });
+
+    if (modalCloseBtn) modalCloseBtn.addEventListener("click", closeVideoModal);
+
+    if (projectModal) {
+      projectModal.addEventListener("click", (e) => {
+        if (e.target === projectModal) closeVideoModal();
+      });
+    }
+
+    // Playlist Item Selection
+    playlistItems.forEach((item) => {
+      item.addEventListener("click", () => {
+        playlistItems.forEach((i) => i.classList.remove("active"));
+        item.classList.add("active");
+
+        const src = item.getAttribute("data-video-src");
+        const poster = item.getAttribute("data-poster");
+        const title = item.getAttribute("data-title");
+        const badge = item.getAttribute("data-badge");
+        const desc = item.getAttribute("data-desc");
+
+        openVideoModal(src, poster, title, badge, desc);
+      });
+    });
+
+    // Escape key closes modal & pauses video
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        closeVideoModal();
+      }
+    });
+  }
+
+  // Interactive 3D Card Hover Tilt Effect
+  function initTiltEffect() {
+    const tiltCards = document.querySelectorAll("[data-tilt]");
+    tiltCards.forEach((card) => {
+      card.addEventListener("mousemove", (e) => {
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+        const rotateX = ((y - centerY) / centerY) * -7;
+        const rotateY = ((x - centerX) / centerX) * 7;
+        card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-8px) scale(1.02)`;
+      });
+
+      card.addEventListener("mouseleave", () => {
+        card.style.transform = "";
+      });
+    });
+  }
+
+  // Viral Reel 9:16 Video Switcher & Theater Modal Controller
+  function initViralReelSwitcher() {
+    const reelTabs = document.querySelectorAll(".reel-tab-btn");
+    const viralPlayer = document.getElementById("viral-reel-player");
+    const viralSource = document.getElementById("viral-reel-source");
+    const expandBtn = document.getElementById("expand-reel-btn");
+
+    const verticalModal = document.getElementById("vertical-reel-modal");
+    const verticalCloseBtn = document.getElementById("vertical-modal-close-btn");
+    const theaterPlayer = document.getElementById("theater-reel-player");
+    const theaterSource = document.getElementById("theater-reel-source");
+    const theaterTabs = document.querySelectorAll(".theater-tab-btn");
+
+    let currentReelSrc = "assets/video5.mp4";
+
+    // Card Reel Tabs
+    reelTabs.forEach((tab, index) => {
+      tab.addEventListener("click", () => {
+        reelTabs.forEach((t) => t.classList.remove("active"));
+        tab.classList.add("active");
+
+        const newSrc = tab.getAttribute("data-src");
+        if (newSrc && viralSource && viralPlayer) {
+          currentReelSrc = newSrc;
+          viralSource.setAttribute("src", newSrc);
+          viralPlayer.load();
+          const playPromise = viralPlayer.play();
+          if (playPromise !== undefined) {
+            playPromise.catch(() => {});
+          }
+        }
+
+        // Sync theater tabs if open
+        if (theaterTabs[index]) {
+          theaterTabs.forEach((t) => t.classList.remove("active"));
+          theaterTabs[index].classList.add("active");
+        }
+      });
+    });
+
+    // Expand to Large 9:16 Theater Modal
+    if (expandBtn && verticalModal && theaterPlayer && theaterSource) {
+      expandBtn.addEventListener("click", (e) => {
+        if (e) e.stopPropagation();
+        if (viralPlayer) viralPlayer.pause();
+        const mainVideoPlayer = document.getElementById("main-video-player");
+        if (mainVideoPlayer) mainVideoPlayer.pause();
+        const cinematicPlayer = document.getElementById("cinematic-title-player");
+        if (cinematicPlayer) cinematicPlayer.pause();
+        const launchPlayer = document.getElementById("launch-promo-player");
+        if (launchPlayer) launchPlayer.pause();
+
+        theaterSource.setAttribute("src", currentReelSrc);
+        theaterPlayer.load();
+        theaterPlayer.muted = false;
+        const playPromise = theaterPlayer.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {});
+        }
+
+        verticalModal.classList.add("open");
+        document.body.style.overflow = "hidden";
+      });
+    }
+
+    // Close Theater Modal
+    const closeTheaterModal = () => {
+      if (verticalModal) {
+        verticalModal.classList.remove("open");
+        document.body.style.overflow = "";
+      }
+      if (theaterPlayer) {
+        theaterPlayer.pause();
+      }
+    };
+
+    if (verticalCloseBtn) verticalCloseBtn.addEventListener("click", closeTheaterModal);
+
+    if (verticalModal) {
+      verticalModal.addEventListener("click", (e) => {
+        if (e.target === verticalModal) closeTheaterModal();
+      });
+    }
+
+    // Theater Tabs Switcher
+    theaterTabs.forEach((tab, index) => {
+      tab.addEventListener("click", () => {
+        theaterTabs.forEach((t) => t.classList.remove("active"));
+        tab.classList.add("active");
+
+        const newSrc = tab.getAttribute("data-src");
+        if (newSrc && theaterSource && theaterPlayer) {
+          currentReelSrc = newSrc;
+          theaterSource.setAttribute("src", newSrc);
+          theaterPlayer.load();
+          theaterPlayer.muted = false;
+          const playPromise = theaterPlayer.play();
+          if (playPromise !== undefined) {
+            playPromise.catch(() => {});
+          }
+        }
+
+        // Sync card tabs
+        if (reelTabs[index]) {
+          reelTabs.forEach((t) => t.classList.remove("active"));
+          reelTabs[index].classList.add("active");
+          if (viralSource && viralPlayer) {
+            viralSource.setAttribute("src", newSrc);
+            viralPlayer.load();
+          }
+        }
+      });
+    });
+
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        closeTheaterModal();
+      }
+    });
+  }
+
+  // Initialization
+  async function init() {
+    initControls();
+    initProjectModals();
+    initTiltEffect();
+    initViralReelSwitcher();
+    resizeCanvas();
+    window.addEventListener("resize", resizeCanvas, { passive: true });
+
+    await preloadImages();
+
+    isReady = true;
+    if (loader) {
+      loader.classList.add("loaded");
+    }
+
+    renderFrame(0);
+    requestAnimationFrame(tick);
+  }
+
+  // Start when DOM is ready
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
+
