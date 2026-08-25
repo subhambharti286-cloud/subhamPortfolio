@@ -2742,13 +2742,45 @@ html, body {
 }
 
 /* ========================================================
-   RESPONSIVE MEDIA QUERIES & MOBILE DESIGN SYSTEM
+   RESPONSIVE MEDIA QUERIES & MULTI-DEVICE SYSTEM
    ======================================================== */
 
-@media (max-width: 992px) {
+/* --------------------------------------------------------
+   1. TABLET LANDSCAPE & PORTRAIT (769px to 1024px)
+   -------------------------------------------------------- */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .main-header {
+    padding: 0.85rem 1.5rem;
+  }
+  .header-container {
+    padding: 0.6rem 1.25rem;
+  }
+  .brand-logo {
+    font-size: 1.2rem;
+  }
+  .nav-menu {
+    gap: 1.15rem;
+  }
+  .nav-link {
+    font-size: 0.82rem;
+  }
+  .btn-cta-nav {
+    padding: 0.45rem 1rem;
+    font-size: 0.82rem;
+  }
+
+  .page-content {
+    padding: 6.5rem 1.75rem 3.5rem;
+    gap: 3.5rem;
+  }
+
+  /* Hero on Tablet */
   .hero-top-grid {
     grid-template-columns: 1fr;
     gap: 2rem;
+  }
+  .hero-heading {
+    font-size: clamp(3.2rem, 8vw, 4.2rem);
   }
   .hero-quote-col {
     border-left: none;
@@ -2756,48 +2788,132 @@ html, body {
     padding-left: 0;
     padding-top: 1.75rem;
   }
+  .hero-frameless-actions {
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+    width: 100%;
+  }
+  .btn-hero-primary,
+  .btn-hero-phone {
+    flex: 1;
+    justify-content: center;
+  }
   .hero-capabilities-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 1.1rem;
   }
-  .works-header-grid {
-    grid-template-columns: 1fr;
+
+  /* Tools on Tablet */
+  .brands-container {
+    padding: 2rem 1.75rem;
   }
-  .works-cards-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .brands-logo-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.85rem;
+    width: 100%;
+  }
+  .brand-item.tool-item {
+    width: 100%;
+    padding: 0.85rem 1rem;
   }
   .craft-matrix-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
   }
+
+  /* Selected Works on Tablet */
+  .works-header-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  .works-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+  .work-card:nth-child(3) {
+    grid-column: span 2;
+    max-width: 620px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  /* Typography Showcase on Tablet */
   .typography-header-grid {
     grid-template-columns: 1fr;
+    gap: 1.5rem;
   }
   .typography-cards-grid {
-    grid-template-columns: 1fr;
-  }
-  .workflow-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .stats-counter-strip {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 1.5rem;
   }
+  .typo-showcase-card {
+    height: auto;
+    overflow: visible;
+    padding: 1.75rem;
+  }
+  .typo-showcase-card:nth-child(3) {
+    grid-column: span 2;
+  }
+  .reel-phone-frame {
+    max-width: 260px;
+    height: 460px;
+    margin: 0 auto;
+  }
+  .reel-video-tabs {
+    max-width: 260px;
+    margin: 0.5rem auto 0;
+  }
+
+  /* Workflow & Stats on Tablet */
+  .workflow-container {
+    padding: 2.5rem 2rem;
+  }
+  .workflow-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+  }
+  .stats-counter-strip {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+  }
   .stat-divider {
     display: none;
   }
-}
 
-/* Hide Developer Physics HUD Everywhere on Mobile & Tablet */
-@media (max-width: 860px) {
-  .hud-toggle-btn,
-  #hud-toggle-btn,
-  #physics-hud-toggle-btn,
-  #physics-hud {
-    display: none !important;
+  /* Footer on Tablet */
+  .footer-container {
+    padding: 3rem 2rem 2rem;
+  }
+  .footer-action-buttons {
+    flex-direction: row;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  .footer-primary-btn,
+  .footer-phone-btn,
+  .footer-secondary-btn {
+    flex: 1 1 220px;
+    justify-content: center;
+  }
+
+  /* Showreel Modal on Tablet */
+  .video-showcase-dialog {
+    max-width: 720px;
+    padding: 2rem 1.75rem;
+  }
+  .showcase-playlist-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.85rem;
   }
 }
 
-/* Mobile Screens (Phones < 768px) */
+/* --------------------------------------------------------
+   2. MOBILE PHONES (< 768px)
+   -------------------------------------------------------- */
 @media (max-width: 768px) {
   .main-header {
     padding: 0.65rem 1rem;
@@ -2845,7 +2961,7 @@ html, body {
     letter-spacing: 0.22em;
   }
   .hero-heading {
-    font-size: clamp(2.8rem, 11vw, 3.8rem);
+    font-size: clamp(2.6rem, 11vw, 3.6rem);
     line-height: 0.95;
     letter-spacing: -0.04em;
   }
@@ -3184,6 +3300,9 @@ html, body {
   .stat-label {
     font-size: 0.78rem;
   }
+  .stat-divider {
+    display: none;
+  }
 
   /* Footer & Contact */
   .footer-container {
@@ -3284,15 +3403,29 @@ html, body {
   }
 }
 
+/* --------------------------------------------------------
+   3. SMALL PHONES & COMPACT SCREENS (< 480px)
+   -------------------------------------------------------- */
 @media (max-width: 480px) {
   .hero-heading {
-    font-size: 2.9rem;
+    font-size: 2.8rem;
   }
   .hero-capabilities-grid {
     grid-template-columns: 1fr;
   }
   .stats-counter-strip {
     grid-template-columns: 1fr;
+  }
+  .reel-phone-frame {
+    max-width: 220px;
+    height: 390px;
+  }
+  .reel-video-tabs {
+    max-width: 220px;
+  }
+  .reel-tab-btn {
+    padding: 0.75rem 0.6rem;
+    font-size: 0.88rem;
   }
 }
 
