@@ -119,7 +119,7 @@
   }
 
   function preloadImages() {
-    // Start instant 280ms visual progress bar
+    // Start instant visual progress bar
     startFastVisualCounter();
 
     // High priority load frame 0
@@ -134,40 +134,27 @@
       loadedCount++;
     };
 
-    // Load initial 10 frames in parallel
-    for (let i = 1; i <= 10; i++) {
-      const img = new Image();
-      img.src = getFramePath(i);
-      img.onload = () => {
-        images[i] = img;
-        loadedCount++;
-      };
-      img.onerror = () => {
-        loadedCount++;
-      };
-    }
-
-    // Stream remaining frames progressively in background
-    setTimeout(() => {
-      streamRemainingFrames();
-    }, 50);
+    // Fast stream all 240 WebP frames with high concurrency
+    streamAllFramesFast();
   }
 
-  // Progressive background frame loader using small concurrent batches
-  function streamRemainingFrames() {
+  // Fast progressive background frame loader
+  function streamAllFramesFast() {
     const queue = [];
-    // Enqueue keyframes first (every 4th frame: 12, 16, 20...) for instant full-timeline coverage
-    for (let i = 12; i < FRAME_COUNT; i += 4) {
+    // Priority 1: first 24 frames
+    for (let i = 1; i <= 24; i++) {
       queue.push(i);
     }
-    // Then fill remaining in-between frames
-    for (let i = 11; i < FRAME_COUNT; i++) {
-      if (i % 4 !== 0) {
-        queue.push(i);
-      }
+    // Priority 2: Keyframes every 2nd frame across entire scroll
+    for (let i = 26; i < FRAME_COUNT; i += 2) {
+      queue.push(i);
+    }
+    // Priority 3: Intermediary odd frames
+    for (let i = 25; i < FRAME_COUNT; i += 2) {
+      queue.push(i);
     }
 
-    const CONCURRENCY = 6;
+    const CONCURRENCY = 20;
     let running = 0;
     let qIdx = 0;
 
@@ -183,6 +170,15 @@
           images[frameIdx] = img;
           loadedCount++;
           running--;
+
+          // If current scroll position is close to newly loaded frame, re-render
+          const currentTargetIdx = Math.min(
+            FRAME_COUNT - 1,
+            Math.max(0, Math.round(currentProgress * (FRAME_COUNT - 1)))
+          );
+          if (Math.abs(currentTargetIdx - frameIdx) <= 2) {
+            renderFrame(currentTargetIdx);
+          }
           processQueue();
         };
         img.onerror = () => {
@@ -195,14 +191,7 @@
     processQueue();
   }
 
-  let cachedMaxScroll = 1;
-  let currentScrollY = 0;
   let lastDrawnImage = null;
-
-  function updateScrollBounds() {
-    cachedMaxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
-    currentScrollY = window.scrollY || window.pageYOffset || 0;
-  }
 
   function resizeCanvas() {
     dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -220,7 +209,6 @@
     ctx.imageSmoothingQuality = "high";
 
     lastRenderedIndex = -1;
-    updateScrollBounds();
     renderFrame(Math.min(FRAME_COUNT - 1, Math.max(0, Math.round(currentProgress * (FRAME_COUNT - 1)))));
   }
 
@@ -278,8 +266,9 @@
   }
 
   function calculateRawScrollProgress() {
-    if (cachedMaxScroll <= 0) return 0;
-    let norm = Math.min(1, Math.max(0, currentScrollY / cachedMaxScroll));
+    const maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+    const scrollY = window.pageYOffset || document.documentElement.scrollTop || window.scrollY || 0;
+    let norm = Math.min(1, Math.max(0, scrollY / maxScroll));
     if (physics.isInverted) {
       norm = 1 - norm;
     }
@@ -287,9 +276,9 @@
   }
 
   function setScrollProgress(progress) {
-    if (cachedMaxScroll <= 0) return;
+    const maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
     const p = physics.isInverted ? 1 - progress : progress;
-    window.scrollTo({ top: p * cachedMaxScroll, behavior: "instant" });
+    window.scrollTo({ top: p * maxScroll, behavior: "instant" });
   }
 
   function updateTrackHeight(vh) {
@@ -939,23 +928,12 @@
     initTypographyCardPlayers();
     initSmartVideoObserver();
     
-    updateScrollBounds();
     resizeCanvas();
 
-    window.addEventListener("scroll", () => {
-      currentScrollY = window.scrollY || window.pageYOffset || 0;
-    }, { passive: true });
-
-    window.addEventListener("resize", () => {
-      resizeCanvas();
-      updateScrollBounds();
-    }, { passive: true });
+    window.addEventListener("resize", resizeCanvas, { passive: true });
 
     window.addEventListener("orientationchange", () => {
-      setTimeout(() => {
-        resizeCanvas();
-        updateScrollBounds();
-      }, 150);
+      setTimeout(resizeCanvas, 150);
     }, { passive: true });
 
     // Start progressive image preloader and buffer engine
