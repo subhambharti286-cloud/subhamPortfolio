@@ -119,7 +119,7 @@
   }
 
   function preloadImages() {
-    // Start instant visual progress bar
+    // Start fast visual countdown progress
     startFastVisualCounter();
 
     // High priority load frame 0
@@ -134,61 +134,18 @@
       loadedCount++;
     };
 
-    // Fast stream all 240 WebP frames with high concurrency
-    streamAllFramesFast();
-  }
-
-  // Fast progressive background frame loader
-  function streamAllFramesFast() {
-    const queue = [];
-    // Priority 1: first 24 frames
-    for (let i = 1; i <= 24; i++) {
-      queue.push(i);
+    // Load all 240 WebP animation frames (total ~5.4MB)
+    for (let i = 1; i < FRAME_COUNT; i++) {
+      const img = new Image();
+      img.src = getFramePath(i);
+      img.onload = () => {
+        images[i] = img;
+        loadedCount++;
+      };
+      img.onerror = () => {
+        loadedCount++;
+      };
     }
-    // Priority 2: Keyframes every 2nd frame across entire scroll
-    for (let i = 26; i < FRAME_COUNT; i += 2) {
-      queue.push(i);
-    }
-    // Priority 3: Intermediary odd frames
-    for (let i = 25; i < FRAME_COUNT; i += 2) {
-      queue.push(i);
-    }
-
-    const CONCURRENCY = 20;
-    let running = 0;
-    let qIdx = 0;
-
-    function processQueue() {
-      while (running < CONCURRENCY && qIdx < queue.length) {
-        const frameIdx = queue[qIdx++];
-        if (images[frameIdx]) continue;
-
-        running++;
-        const img = new Image();
-        img.src = getFramePath(frameIdx);
-        img.onload = () => {
-          images[frameIdx] = img;
-          loadedCount++;
-          running--;
-
-          // If current scroll position is close to newly loaded frame, re-render
-          const currentTargetIdx = Math.min(
-            FRAME_COUNT - 1,
-            Math.max(0, Math.round(currentProgress * (FRAME_COUNT - 1)))
-          );
-          if (Math.abs(currentTargetIdx - frameIdx) <= 2) {
-            renderFrame(currentTargetIdx);
-          }
-          processQueue();
-        };
-        img.onerror = () => {
-          loadedCount++;
-          running--;
-          processQueue();
-        };
-      }
-    }
-    processQueue();
   }
 
   let lastDrawnImage = null;
@@ -232,7 +189,7 @@
 
   function renderFrame(index) {
     const clampedIndex = Math.min(FRAME_COUNT - 1, Math.max(0, index));
-    const img = getClosestLoadedImage(clampedIndex);
+    const img = images[clampedIndex] || getClosestLoadedImage(clampedIndex);
     if (!img || !img.complete || img.naturalWidth === 0) return;
 
     const imgWidth = img.naturalWidth;
