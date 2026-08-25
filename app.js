@@ -319,12 +319,13 @@
   }
 
   function tick(timestamp) {
+    requestAnimationFrame(tick);
+
     if (!isReady) return;
 
     // Pause heavy canvas rendering when full-screen video showreel modal is active
     const modalActive = document.querySelector(".project-modal-backdrop.open");
     if (modalActive) {
-      requestAnimationFrame(tick);
       return;
     }
 
@@ -373,8 +374,6 @@
         scrollCue.classList.remove("hidden");
       }
     }
-
-    requestAnimationFrame(tick);
   }
 
   // Bind HUD & Controls
