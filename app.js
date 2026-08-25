@@ -1,8 +1,9 @@
 (() => {
   const FRAME_COUNT = 240;
   const FRAME_PREFIX = "frames/frame_";
-  const FRAME_EXT = ".png";
+  const FRAME_EXT = ".webp";
   const PAD_LENGTH = 6;
+  const INITIAL_BUFFER_TARGET = 8; // Instant unlock upon loading first 8 frames (~180KB)
 
   // Default Physics Parameters
   const DEFAULTS = {
@@ -71,6 +72,7 @@
 
   const images = new Array(FRAME_COUNT);
   let loadedCount = 0;
+  let initialBufferLoaded = 0;
   let canvasWidth = 0;
   let canvasHeight = 0;
   let dpr = 1;
@@ -79,45 +81,130 @@
     return `${FRAME_PREFIX}${String(index).padStart(PAD_LENGTH, "0")}${FRAME_EXT}`;
   }
 
-  function preloadImages() {
-    return new Promise((resolve) => {
-      for (let i = 0; i < FRAME_COUNT; i++) {
-        const img = new Image();
-        img.src = getFramePath(i);
-
-        img.onload = () => {
-          loadedCount++;
-          updateLoaderProgress();
-          if (i === 0 && !isReady) {
-            renderFrame(0);
-          }
-          if (loadedCount === FRAME_COUNT) {
-            resolve();
-          }
-        };
-
-        img.onerror = () => {
-          console.warn(`Failed to load frame: ${getFramePath(i)}`);
-          loadedCount++;
-          updateLoaderProgress();
-          if (loadedCount === FRAME_COUNT) {
-            resolve();
-          }
-        };
-
-        images[i] = img;
-      }
-    });
-  }
-
-  function updateLoaderProgress() {
-    const percent = Math.min(100, Math.floor((loadedCount / FRAME_COUNT) * 100));
+  function updateLoaderProgress(customPercent) {
+    let percent;
+    if (typeof customPercent === "number") {
+      percent = customPercent;
+    } else if (!isReady) {
+      percent = Math.min(100, Math.floor((initialBufferLoaded / INITIAL_BUFFER_TARGET) * 100));
+    } else {
+      percent = 100;
+    }
     if (progressBar) progressBar.style.width = `${percent}%`;
     if (progressText) progressText.textContent = `${percent}%`;
   }
 
+  function unlockPreloader() {
+    if (isReady) return;
+    isReady = true;
+    updateLoaderProgress(100);
+    if (loader) {
+      loader.classList.add("loaded");
+    }
+    renderFrame(0);
+  }
+
+  function preloadImages() {
+    return new Promise((resolve) => {
+      // Hard safety timeout: Dismiss loader in at most 1200ms
+      const safetyTimer = setTimeout(() => {
+        unlockPreloader();
+        resolve();
+      }, 1200);
+
+      // Phase 1: High priority load frame 0
+      const firstImg = new Image();
+      firstImg.src = getFramePath(0);
+      firstImg.onload = () => {
+        images[0] = firstImg;
+        loadedCount++;
+        initialBufferLoaded++;
+        updateLoaderProgress();
+        renderFrame(0);
+      };
+      firstImg.onerror = () => {
+        loadedCount++;
+        initialBufferLoaded++;
+      };
+
+      // Phase 2: Load initial critical batch (frames 1 to 10)
+      const INITIAL_BATCH = 10;
+      for (let i = 1; i <= INITIAL_BATCH; i++) {
+        const img = new Image();
+        img.src = getFramePath(i);
+        img.onload = () => {
+          images[i] = img;
+          loadedCount++;
+          initialBufferLoaded++;
+          updateLoaderProgress();
+          if (initialBufferLoaded >= INITIAL_BUFFER_TARGET && !isReady) {
+            clearTimeout(safetyTimer);
+            unlockPreloader();
+            resolve();
+          }
+        };
+        img.onerror = () => {
+          loadedCount++;
+          initialBufferLoaded++;
+          if (initialBufferLoaded >= INITIAL_BUFFER_TARGET && !isReady) {
+            clearTimeout(safetyTimer);
+            unlockPreloader();
+            resolve();
+          }
+        };
+      }
+
+      // Phase 3: Background stream remaining frames (11 to 239)
+      setTimeout(() => {
+        streamRemainingFrames();
+      }, 80);
+    });
+  }
+
+  // Progressive background frame loader using small concurrent batches
+  function streamRemainingFrames() {
+    const queue = [];
+    // Enqueue keyframes first (every 4th frame: 12, 16, 20...) for instant full-timeline coverage
+    for (let i = 12; i < FRAME_COUNT; i += 4) {
+      queue.push(i);
+    }
+    // Then fill remaining in-between frames
+    for (let i = 11; i < FRAME_COUNT; i++) {
+      if (i % 4 !== 0) {
+        queue.push(i);
+      }
+    }
+
+    const CONCURRENCY = 6;
+    let running = 0;
+    let qIdx = 0;
+
+    function processQueue() {
+      while (running < CONCURRENCY && qIdx < queue.length) {
+        const frameIdx = queue[qIdx++];
+        if (images[frameIdx]) continue;
+
+        running++;
+        const img = new Image();
+        img.src = getFramePath(frameIdx);
+        img.onload = () => {
+          images[frameIdx] = img;
+          loadedCount++;
+          running--;
+          processQueue();
+        };
+        img.onerror = () => {
+          loadedCount++;
+          running--;
+          processQueue();
+        };
+      }
+    }
+    processQueue();
+  }
+
   function resizeCanvas() {
-    dpr = window.devicePixelRatio || 1;
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
     canvasWidth = window.innerWidth;
     canvasHeight = window.innerHeight;
 
@@ -126,18 +213,36 @@
     canvas.style.width = `${canvasWidth}px`;
     canvas.style.height = `${canvasHeight}px`;
 
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(dpr, dpr);
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
 
     lastRenderedIndex = -1;
-    if (images[0] && images[0].complete) {
-      renderFrame(Math.min(FRAME_COUNT - 1, Math.max(0, Math.round(currentProgress * (FRAME_COUNT - 1)))));
+    renderFrame(Math.min(FRAME_COUNT - 1, Math.max(0, Math.round(currentProgress * (FRAME_COUNT - 1)))));
+  }
+
+  // Smart fallback: returns closest loaded frame to avoid blank flashes during fast scrolls
+  function getClosestLoadedImage(targetIdx) {
+    if (images[targetIdx] && images[targetIdx].complete && images[targetIdx].naturalWidth > 0) {
+      return images[targetIdx];
     }
+    for (let dist = 1; dist < FRAME_COUNT; dist++) {
+      const prev = targetIdx - dist;
+      if (prev >= 0 && images[prev] && images[prev].complete && images[prev].naturalWidth > 0) {
+        return images[prev];
+      }
+      const next = targetIdx + dist;
+      if (next < FRAME_COUNT && images[next] && images[next].complete && images[next].naturalWidth > 0) {
+        return images[next];
+      }
+    }
+    return null;
   }
 
   function renderFrame(index) {
-    const img = images[index];
+    const clampedIndex = Math.min(FRAME_COUNT - 1, Math.max(0, index));
+    const img = getClosestLoadedImage(clampedIndex);
     if (!img || !img.complete || img.naturalWidth === 0) return;
 
     const imgWidth = img.naturalWidth;
@@ -153,7 +258,7 @@
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
     ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
 
-    lastRenderedIndex = index;
+    lastRenderedIndex = clampedIndex;
   }
 
   // Easing Functions
@@ -831,14 +936,10 @@
       setTimeout(resizeCanvas, 150);
     }, { passive: true });
 
-    await preloadImages();
+    // Start progressive image preloader and buffer engine
+    preloadImages();
 
-    isReady = true;
-    if (loader) {
-      loader.classList.add("loaded");
-    }
-
-    renderFrame(0);
+    // Start animation loop
     requestAnimationFrame(tick);
   }
 
