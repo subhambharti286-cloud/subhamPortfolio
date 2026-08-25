@@ -585,13 +585,34 @@
     openBtns.forEach((btn) => {
       btn.addEventListener("click", (e) => {
         if (e) e.preventDefault();
-        const activeItem = document.querySelector(".playlist-item-card.active") || playlistItems[0];
-        if (activeItem) {
-          const src = activeItem.getAttribute("data-video-src") || window.PORTFOLIO_VIDEOS.project1;
-          const poster = activeItem.getAttribute("data-poster");
-          const title = activeItem.getAttribute("data-title");
-          const badge = activeItem.getAttribute("data-badge");
-          const desc = activeItem.getAttribute("data-desc");
+        const clickedCard = btn.closest(".btn-open-project-modal") || btn;
+        let src = clickedCard.getAttribute("data-video-src");
+        let poster = clickedCard.getAttribute("data-poster");
+        let title = clickedCard.getAttribute("data-title");
+        let badge = clickedCard.getAttribute("data-badge");
+        let desc = clickedCard.getAttribute("data-desc");
+
+        if (src) {
+          // Sync playlist active class
+          playlistItems.forEach((item) => {
+            if (item.getAttribute("data-video-src") === src) {
+              item.classList.add("active");
+            } else {
+              item.classList.remove("active");
+            }
+          });
+        } else {
+          const activeItem = document.querySelector(".playlist-item-card.active") || playlistItems[0];
+          if (activeItem) {
+            src = activeItem.getAttribute("data-video-src") || window.PORTFOLIO_VIDEOS.project1;
+            poster = activeItem.getAttribute("data-poster");
+            title = activeItem.getAttribute("data-title");
+            badge = activeItem.getAttribute("data-badge");
+            desc = activeItem.getAttribute("data-desc");
+          }
+        }
+
+        if (src) {
           openVideoModal(src, poster, title, badge, desc);
         }
       });

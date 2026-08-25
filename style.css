@@ -2714,20 +2714,95 @@ input[type="range"]::-webkit-slider-thumb:hover {
   transform: translateY(-3px);
 }
 
+/* Hero Phone CTA Button */
+.btn-hero-phone {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #ffffff;
+  text-decoration: none;
+  background: rgba(34, 197, 94, 0.16);
+  border: 1.5px solid rgba(34, 197, 94, 0.45);
+  padding: 0.85rem 1.75rem;
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(34, 197, 94, 0.2);
+  transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.btn-hero-phone:hover {
+  background: rgba(34, 197, 94, 0.3);
+  border-color: rgba(34, 197, 94, 0.7);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(34, 197, 94, 0.35);
+  color: #ffffff;
+}
+
+.btn-hero-phone svg {
+  color: #4ade80;
+}
+
+/* Works Card Play Action Overlay */
+.work-card-play-action {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  background: rgba(10, 11, 20, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 0.65rem 1.25rem;
+  border-radius: 999px;
+  color: #ffffff;
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  font-weight: 700;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7), 0 0 20px rgba(56, 189, 248, 0.25);
+  transition: all 0.25s ease;
+  pointer-events: none;
+}
+
+.play-btn-circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #38bdf8;
+  color: #000000;
+  font-size: 0.7rem;
+  padding-left: 2px;
+}
+
+.work-card:hover .work-card-play-action {
+  transform: translate(-50%, -50%) scale(1.08);
+  background: rgba(10, 11, 20, 0.95);
+  border-color: #38bdf8;
+  box-shadow: 0 12px 35px rgba(56, 189, 248, 0.45);
+}
+
 /* ========================================================
-   RESPONSIVE MEDIA QUERIES
+   RESPONSIVE MEDIA QUERIES & MOBILE DESIGN SYSTEM
    ======================================================== */
 
 @media (max-width: 992px) {
   .hero-top-grid {
     grid-template-columns: 1fr;
-    gap: 1.5rem;
+    gap: 2rem;
   }
   .hero-quote-col {
     border-left: none;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     padding-left: 0;
-    padding-top: 1.5rem;
+    padding-top: 1.75rem;
   }
   .hero-capabilities-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -2760,83 +2835,391 @@ input[type="range"]::-webkit-slider-thumb:hover {
   }
 }
 
-@media (max-width: 640px) {
+/* Hide Developer Physics HUD on Tablets & Mobile */
+@media (max-width: 860px) {
+  #physics-hud-toggle-btn,
+  #physics-hud {
+    display: none !important;
+  }
+}
+
+/* Mobile Screens (Phones < 768px) */
+@media (max-width: 768px) {
+  .main-header {
+    padding: 0.65rem 1rem;
+  }
+  .header-container {
+    padding: 0.55rem 1rem;
+    border-radius: 999px;
+  }
+  .brand-logo {
+    font-size: 1.15rem;
+  }
+  .nav-menu {
+    display: none;
+  }
+  .btn-cta-nav {
+    padding: 0.45rem 0.95rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+
+  .page-content {
+    padding: 5.25rem 1rem 3rem;
+    gap: 3rem;
+  }
+
+  /* Hero Section */
+  .hero-frameless-content {
+    gap: 2rem;
+    padding: 0.5rem 0 0;
+  }
+  .hero-top-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  .hero-status-tag {
+    padding: 0.45rem 1rem;
+    margin-bottom: 0.4rem;
+  }
+  .status-badge-text {
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+  .hero-name-label {
+    font-size: 1rem;
+    letter-spacing: 0.22em;
+  }
+  .hero-heading {
+    font-size: clamp(2.8rem, 11vw, 3.8rem);
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+  }
+  .hero-quote-title {
+    font-size: 1.45rem;
+    line-height: 1.3;
+  }
+  .hero-quote-sub {
+    font-size: 1rem;
+    line-height: 1.65;
+    color: rgba(226, 232, 240, 0.95);
+  }
+  .hero-frameless-actions {
+    flex-direction: column;
+    width: 100%;
+    gap: 0.85rem;
+    margin-top: 0.5rem;
+  }
+  .btn-hero-primary,
+  .btn-hero-phone {
+    width: 100%;
+    justify-content: center;
+    padding: 1rem 1.5rem;
+    font-size: 1.02rem;
+    border-radius: 999px;
+  }
+  .hero-capabilities-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem;
+    padding-top: 1.25rem;
+  }
+  .capability-item {
+    padding: 1.1rem 0.95rem;
+    border-radius: 16px;
+  }
+  .cap-num {
+    font-size: 0.85rem;
+  }
+  .cap-name {
+    font-size: 0.98rem;
+    line-height: 1.25;
+  }
+  .cap-desc {
+    font-size: 0.8rem;
+    line-height: 1.35;
+  }
+
+  /* Tools & Software */
+  .brands-container {
+    padding: 1.5rem 1.25rem;
+    border-radius: 20px;
+    gap: 1.5rem;
+  }
+  .brands-label {
+    width: 100%;
+    text-align: center;
+  }
+  .brands-label span {
+    font-size: 0.88rem;
+    letter-spacing: 0.12em;
+  }
+  .brands-logo-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+    gap: 0.75rem;
+  }
+  .brand-item.tool-item {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    justify-content: flex-start;
+    border-radius: 14px;
+  }
+  .adobe-badge {
+    width: 44px;
+    height: 44px;
+    font-size: 1.15rem;
+  }
+  .tool-info .brand-name {
+    font-size: 0.98rem;
+    font-weight: 700;
+  }
+  .tool-info .tool-role {
+    font-size: 0.82rem;
+  }
   .craft-matrix-grid {
-    grid-template-columns: 1fr;
-  }
-  .typography-cards-grid {
-    grid-template-columns: 1fr;
-  }
-  .workflow-grid {
-    grid-template-columns: 1fr;
-  }
-  .stats-counter-strip {
     grid-template-columns: 1fr;
     gap: 1rem;
   }
+  .craft-item-card {
+    padding: 1.5rem 1.25rem;
+    border-radius: 18px;
+  }
+  .craft-title {
+    font-size: 1.3rem;
+  }
+  .craft-subtext {
+    font-size: 0.95rem;
+  }
+  .craft-micro-tags span {
+    font-size: 0.82rem;
+    padding: 0.35rem 0.8rem;
+  }
+
+  /* Works Showcase */
+  .works-header-grid {
+    padding: 1.5rem 1.25rem;
+    gap: 1.25rem;
+    border-radius: 20px;
+  }
+  .works-tag {
+    font-size: 0.82rem;
+  }
+  .works-heading {
+    font-size: 1.85rem;
+    line-height: 1.2;
+  }
+  .works-bio-lead {
+    font-size: 0.98rem;
+    line-height: 1.6;
+  }
+  .works-cta-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.85rem;
+  }
+  .btn-cta-orange {
+    width: 100%;
+    justify-content: center;
+    padding: 0.95rem 1.5rem;
+    font-size: 1rem;
+  }
+  .works-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  .work-card {
+    border-radius: 18px;
+    cursor: pointer;
+  }
+  .work-card-media {
+    aspect-ratio: 16 / 9.5;
+    border-radius: 18px;
+  }
+  .work-title {
+    font-size: 1.2rem;
+    line-height: 1.3;
+  }
+  .work-category {
+    font-size: 0.82rem;
+  }
+
+  /* Typography & Video Showcase */
+  .typography-header-grid {
+    padding: 1.5rem 1.25rem;
+    border-radius: 20px;
+    gap: 1.25rem;
+  }
+  .typo-tag {
+    font-size: 0.82rem;
+  }
+  .typo-heading {
+    font-size: 1.85rem;
+    line-height: 1.2;
+  }
+  .typo-bio-lead {
+    font-size: 0.98rem;
+    line-height: 1.6;
+  }
+  .typo-stats-row {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .typo-stat-pill {
+    width: 100%;
+    font-size: 0.85rem;
+    padding: 0.5rem 0.9rem;
+  }
+  .typography-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  .typo-showcase-card {
+    padding: 1.5rem 1.25rem;
+    border-radius: 22px;
+  }
+  .reel-phone-frame {
+    width: 100%;
+    max-width: 300px;
+    height: 510px;
+    margin: 0 auto;
+  }
+  .reel-video-tabs {
+    width: 100%;
+    max-width: 300px;
+    margin: 0.85rem auto 0;
+    gap: 0.65rem;
+  }
+  .reel-tab-btn {
+    flex: 1;
+    padding: 0.85rem 1rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    justify-content: center;
+    border-radius: 12px;
+  }
+  .reel-expand-btn {
+    padding: 0.55rem 1rem;
+    font-size: 0.85rem;
+  }
+  .typo-card-title {
+    font-size: 1.35rem;
+  }
+  .typo-card-desc {
+    font-size: 0.95rem;
+    line-height: 1.6;
+  }
+  .typo-tag-list span {
+    font-size: 0.82rem;
+    padding: 0.4rem 0.85rem;
+  }
+
+  /* Workflow & Stats */
+  .workflow-container {
+    padding: 1.75rem 1.25rem;
+    border-radius: 20px;
+  }
+  .section-badge {
+    font-size: 0.8rem;
+  }
+  .section-title {
+    font-size: 1.85rem;
+    line-height: 1.2;
+  }
+  .section-subtitle {
+    font-size: 0.95rem;
+    line-height: 1.6;
+  }
+  .workflow-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .workflow-card {
+    padding: 1.4rem 1.2rem;
+    border-radius: 16px;
+  }
+  .workflow-step-title {
+    font-size: 1.25rem;
+  }
+  .workflow-step-desc {
+    font-size: 0.92rem;
+    line-height: 1.55;
+  }
+  .workflow-tags span {
+    font-size: 0.8rem;
+  }
+  .stats-counter-strip {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem;
+    padding: 1.25rem 0.85rem;
+    border-radius: 16px;
+  }
+  .stat-box {
+    padding: 0.85rem;
+  }
+  .stat-number {
+    font-size: 1.85rem;
+  }
+  .stat-label {
+    font-size: 0.78rem;
+  }
+
+  /* Footer & Contact */
+  .footer-container {
+    padding: 2.25rem 1.25rem 1.5rem;
+    border-radius: 22px;
+  }
+  .live-availability-badge {
+    padding: 0.45rem 1rem;
+    font-size: 0.78rem;
+    text-align: center;
+  }
   .footer-title {
     font-size: 2.1rem;
+    line-height: 1.15;
+  }
+  .footer-sub {
+    font-size: 0.98rem;
+    line-height: 1.6;
   }
   .footer-action-buttons {
     flex-direction: column;
     width: 100%;
+    gap: 0.85rem;
   }
   .footer-primary-btn,
+  .footer-phone-btn,
   .footer-secondary-btn {
     width: 100%;
     justify-content: center;
+    padding: 1.05rem 1.5rem;
+    font-size: 1.05rem;
+    border-radius: 14px;
   }
-  .typography-header-grid {
-    padding: 1.5rem;
+  .footer-social-chips {
+    gap: 0.5rem;
   }
-  .page-content {
-    padding: 5.5rem 1rem 3rem;
-    gap: 2.5rem;
+  .social-chip {
+    font-size: 0.82rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
   }
-  .hero-card {
-    padding: 1.75rem;
-  }
-  .hero-profile-col {
+  .footer-bottom {
     flex-direction: column;
-    align-items: flex-start;
     gap: 1.25rem;
+    text-align: center;
   }
-  .hero-avatar-wrapper {
-    width: 90px;
-    height: 90px;
-    min-width: 90px;
-    border-radius: 20px;
-  }
+}
+
+@media (max-width: 480px) {
   .hero-heading {
-    font-size: 2.4rem;
+    font-size: 2.9rem;
   }
   .hero-capabilities-grid {
     grid-template-columns: 1fr;
   }
-  .brands-container {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  .works-cards-grid {
+  .stats-counter-strip {
     grid-template-columns: 1fr;
-  }
-  .works-header-grid {
-    padding: 1.5rem;
-  }
-  .works-cta-row {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  .footer-container {
-    padding: 2rem 1.5rem 1.5rem;
-  }
-  .footer-title {
-    font-size: 1.8rem;
-  }
-  .footer-bottom {
-    flex-direction: column;
-    gap: 1rem;
-    text-align: center;
   }
 }
 
@@ -3117,11 +3500,55 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 @media (max-width: 768px) {
-  .showcase-playlist-grid {
-    grid-template-columns: 1fr;
+  .project-modal-backdrop {
+    padding: 0.75rem;
+    align-items: flex-end;
   }
   .video-showcase-dialog {
-    padding: 1.5rem 1.25rem;
+    padding: 1.25rem 1rem 1.5rem;
+    border-radius: 24px 24px 16px 16px;
+    max-height: 94vh;
+    width: 100%;
+  }
+  .modal-header {
+    margin-bottom: 0.85rem;
+    padding-bottom: 0.75rem;
+  }
+  .modal-title {
+    font-size: 1.25rem;
+  }
+  .modal-subtitle {
+    font-size: 0.82rem;
+  }
+  .modal-close-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 1.25rem;
+  }
+  .showcase-player-wrapper {
+    aspect-ratio: 16 / 9;
+    max-height: 240px;
+    border-radius: 14px;
+  }
+  .showcase-playlist-grid {
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+  }
+  .playlist-item-card {
+    padding: 0.75rem 0.85rem;
+    border-radius: 12px;
+  }
+  .playlist-thumb {
+    width: 72px;
+    height: 48px;
+    border-radius: 8px;
+  }
+  .playlist-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+  }
+  .playlist-meta {
+    font-size: 0.76rem;
   }
 }
 
