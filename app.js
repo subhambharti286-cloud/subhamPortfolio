@@ -267,6 +267,15 @@
   }
 
   function tick(timestamp) {
+    if (!isReady) return;
+
+    // Pause heavy canvas rendering when full-screen video showreel modal is active
+    const modalActive = document.querySelector(".project-modal-backdrop.open");
+    if (modalActive) {
+      requestAnimationFrame(tick);
+      return;
+    }
+
     if (physics.autoPlay) {
       // Auto-loop scrubber
       const speedDelta = (0.0025 * physics.autoPlaySpeed);
@@ -540,6 +549,13 @@
 
     // Open Video Player Modal
     const openVideoModal = (src, poster, title, badge, desc) => {
+      // Pause ALL background videos on the page so 100% decoder bandwidth goes to showreel
+      document.querySelectorAll("video").forEach((v) => {
+        if (!v.closest(".showcase-player-wrapper")) {
+          v.pause();
+        }
+      });
+
       if (mainTitle && title) mainTitle.textContent = title;
       if (statusBadge && badge) statusBadge.textContent = badge;
       if (mainDesc && desc) mainDesc.textContent = desc;
@@ -561,7 +577,8 @@
         document.body.style.overflow = "";
       }
       if (playerWrapper) {
-        playerWrapper.innerHTML = "";
+        const v = playerWrapper.querySelector("video");
+        if (v) v.pause();
       }
     };
 
