@@ -2851,9 +2851,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   width: 100vw;
   height: 100vh;
   z-index: 150;
-  background: rgba(5, 5, 10, 0.82);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  background: rgba(3, 3, 6, 0.96);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2862,6 +2860,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   visibility: hidden;
   pointer-events: none;
   transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translateZ(0);
 }
 
 .project-modal-backdrop.open {
@@ -2878,12 +2877,13 @@ input[type="range"]::-webkit-slider-thumb:hover {
   overflow-y: auto;
   border-radius: 28px;
   padding: 2rem 2rem 1.75rem;
-  background: rgba(14, 14, 22, 0.94);
+  background: #0d0d16;
   border: 1px solid rgba(255, 255, 255, 0.16);
-  box-shadow: 0 32px 100px rgba(0, 0, 0, 0.8), 0 0 60px rgba(59, 130, 246, 0.25);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.9);
   transform: scale(0.92) translateY(24px);
   transition: transform 0.4s cubic-bezier(0.34, 1.45, 0.64, 1), opacity 0.35s ease;
   opacity: 0;
+  isolation: isolate;
 }
 
 .project-modal-backdrop.open .video-showcase-dialog {
