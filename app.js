@@ -195,6 +195,15 @@
     processQueue();
   }
 
+  let cachedMaxScroll = 1;
+  let currentScrollY = 0;
+  let lastDrawnImage = null;
+
+  function updateScrollBounds() {
+    cachedMaxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+    currentScrollY = window.scrollY || window.pageYOffset || 0;
+  }
+
   function resizeCanvas() {
     dpr = Math.min(window.devicePixelRatio || 1, 2);
     canvasWidth = window.innerWidth;
@@ -211,6 +220,7 @@
     ctx.imageSmoothingQuality = "high";
 
     lastRenderedIndex = -1;
+    updateScrollBounds();
     renderFrame(Math.min(FRAME_COUNT - 1, Math.max(0, Math.round(currentProgress * (FRAME_COUNT - 1)))));
   }
 
@@ -229,7 +239,7 @@
         return images[next];
       }
     }
-    return null;
+    return lastDrawnImage || images[0] || null;
   }
 
   function renderFrame(index) {
@@ -246,11 +256,11 @@
     const offsetX = (canvasWidth - drawWidth) / 2;
     const offsetY = (canvasHeight - drawHeight) / 2;
 
-    ctx.fillStyle = "#070709";
-    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+    // Direct draw: Eliminates frame flicker and disappearing canvas background
     ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
 
     lastRenderedIndex = clampedIndex;
+    lastDrawnImage = img;
   }
 
   // Easing Functions
@@ -268,9 +278,8 @@
   }
 
   function calculateRawScrollProgress() {
-    const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-    if (maxScroll <= 0) return 0;
-    let norm = Math.min(1, Math.max(0, window.scrollY / maxScroll));
+    if (cachedMaxScroll <= 0) return 0;
+    let norm = Math.min(1, Math.max(0, currentScrollY / cachedMaxScroll));
     if (physics.isInverted) {
       norm = 1 - norm;
     }
@@ -278,9 +287,9 @@
   }
 
   function setScrollProgress(progress) {
-    const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+    if (cachedMaxScroll <= 0) return;
     const p = physics.isInverted ? 1 - progress : progress;
-    window.scrollTo({ top: p * maxScroll, behavior: "instant" });
+    window.scrollTo({ top: p * cachedMaxScroll, behavior: "instant" });
   }
 
   function updateTrackHeight(vh) {
@@ -747,24 +756,31 @@
     });
   }
 
-  // Interactive 3D Card Hover Tilt Effect
+  // Interactive 3D Card Hover Tilt Effect (Desktop with fine pointer only)
   function initTiltEffect() {
+    if (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) return;
+
     const tiltCards = document.querySelectorAll("[data-tilt]");
     tiltCards.forEach((card) => {
+      let rafId = null;
       card.addEventListener("mousemove", (e) => {
-        const rect = card.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        const centerX = rect.width / 2;
-        const centerY = rect.height / 2;
-        const rotateX = ((y - centerY) / centerY) * -7;
-        const rotateY = ((x - centerX) / centerX) * 7;
-        card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-8px) scale(1.02)`;
-      });
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(() => {
+          const rect = card.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          const centerX = rect.width / 2;
+          const centerY = rect.height / 2;
+          const rotateX = ((y - centerY) / centerY) * -6;
+          const rotateY = ((x - centerX) / centerX) * 6;
+          card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-6px) scale(1.01)`;
+        });
+      }, { passive: true });
 
       card.addEventListener("mouseleave", () => {
+        if (rafId) cancelAnimationFrame(rafId);
         card.style.transform = "";
-      });
+      }, { passive: true });
     });
   }
 
@@ -922,10 +938,24 @@
     initViralReelSwitcher();
     initTypographyCardPlayers();
     initSmartVideoObserver();
+    
+    updateScrollBounds();
     resizeCanvas();
-    window.addEventListener("resize", resizeCanvas, { passive: true });
+
+    window.addEventListener("scroll", () => {
+      currentScrollY = window.scrollY || window.pageYOffset || 0;
+    }, { passive: true });
+
+    window.addEventListener("resize", () => {
+      resizeCanvas();
+      updateScrollBounds();
+    }, { passive: true });
+
     window.addEventListener("orientationchange", () => {
-      setTimeout(resizeCanvas, 150);
+      setTimeout(() => {
+        resizeCanvas();
+        updateScrollBounds();
+      }, 150);
     }, { passive: true });
 
     // Start progressive image preloader and buffer engine
