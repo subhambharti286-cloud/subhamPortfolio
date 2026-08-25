@@ -82,14 +82,7 @@
   }
 
   function updateLoaderProgress(customPercent) {
-    let percent;
-    if (typeof customPercent === "number") {
-      percent = customPercent;
-    } else if (!isReady) {
-      percent = Math.min(100, Math.floor((initialBufferLoaded / INITIAL_BUFFER_TARGET) * 100));
-    } else {
-      percent = 100;
-    }
+    let percent = typeof customPercent === "number" ? Math.min(100, Math.max(0, Math.round(customPercent))) : 100;
     if (progressBar) progressBar.style.width = `${percent}%`;
     if (progressText) progressText.textContent = `${percent}%`;
   }
@@ -104,61 +97,60 @@
     renderFrame(0);
   }
 
-  function preloadImages() {
-    return new Promise((resolve) => {
-      // Hard safety timeout: Dismiss loader in at most 1200ms
-      const safetyTimer = setTimeout(() => {
+  function startFastVisualCounter() {
+    const startTime = performance.now();
+    const duration = 280; // 280ms lightning-fast smooth countdown
+
+    function step(now) {
+      const elapsed = now - startTime;
+      const progress = Math.min(1, elapsed / duration);
+      // Ease out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const val = Math.floor(eased * 100);
+      updateLoaderProgress(val);
+
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      } else {
         unlockPreloader();
-        resolve();
-      }, 1200);
-
-      // Phase 1: High priority load frame 0
-      const firstImg = new Image();
-      firstImg.src = getFramePath(0);
-      firstImg.onload = () => {
-        images[0] = firstImg;
-        loadedCount++;
-        initialBufferLoaded++;
-        updateLoaderProgress();
-        renderFrame(0);
-      };
-      firstImg.onerror = () => {
-        loadedCount++;
-        initialBufferLoaded++;
-      };
-
-      // Phase 2: Load initial critical batch (frames 1 to 10)
-      const INITIAL_BATCH = 10;
-      for (let i = 1; i <= INITIAL_BATCH; i++) {
-        const img = new Image();
-        img.src = getFramePath(i);
-        img.onload = () => {
-          images[i] = img;
-          loadedCount++;
-          initialBufferLoaded++;
-          updateLoaderProgress();
-          if (initialBufferLoaded >= INITIAL_BUFFER_TARGET && !isReady) {
-            clearTimeout(safetyTimer);
-            unlockPreloader();
-            resolve();
-          }
-        };
-        img.onerror = () => {
-          loadedCount++;
-          initialBufferLoaded++;
-          if (initialBufferLoaded >= INITIAL_BUFFER_TARGET && !isReady) {
-            clearTimeout(safetyTimer);
-            unlockPreloader();
-            resolve();
-          }
-        };
       }
+    }
+    requestAnimationFrame(step);
+  }
 
-      // Phase 3: Background stream remaining frames (11 to 239)
-      setTimeout(() => {
-        streamRemainingFrames();
-      }, 80);
-    });
+  function preloadImages() {
+    // Start instant 280ms visual progress bar
+    startFastVisualCounter();
+
+    // High priority load frame 0
+    const firstImg = new Image();
+    firstImg.src = getFramePath(0);
+    firstImg.onload = () => {
+      images[0] = firstImg;
+      loadedCount++;
+      renderFrame(0);
+    };
+    firstImg.onerror = () => {
+      loadedCount++;
+    };
+
+    // Load initial 10 frames in parallel
+    for (let i = 1; i <= 10; i++) {
+      const img = new Image();
+      img.src = getFramePath(i);
+      img.onload = () => {
+        images[i] = img;
+        loadedCount++;
+      };
+      img.onerror = () => {
+        loadedCount++;
+      };
+    }
+
+    // Stream remaining frames progressively in background
+    setTimeout(() => {
+      streamRemainingFrames();
+    }, 50);
   }
 
   // Progressive background frame loader using small concurrent batches

@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=2.5" />
+  <link rel="stylesheet" href="style.css?v=3.0" />
 </head>
 <body>
   <!-- Preloader Screen -->
@@ -397,7 +397,7 @@
             <div class="vertical-reel-player-wrapper">
               <div class="reel-phone-frame">
                 <div class="reel-phone-notch"></div>
-                <video id="viral-reel-player" class="reel-video-element" controls playsinline loop muted preload="metadata" poster="assets/thumb-reel.jpg">
+                <video id="viral-reel-player" class="reel-video-element" controls playsinline loop muted preload="none" poster="assets/thumb-reel.jpg">
                   <source id="viral-reel-source" src="assets/video5.mp4" type="video/mp4">
                   Your browser does not support HTML5 video.
                 </video>
@@ -445,7 +445,7 @@
             <!-- Real 16:9 Cinematic Video Player Stage -->
             <div class="cinematic-video-player-wrapper">
               <div class="cinematic-player-frame">
-                <video id="cinematic-title-player" class="cinematic-video-element" controls playsinline loop muted preload="metadata" poster="assets/thumb-music.jpg">
+                <video id="cinematic-title-player" class="cinematic-video-element" controls playsinline loop muted preload="none" poster="assets/thumb-music.jpg">
                   <source src="assets/video4.mp4" type="video/mp4">
                   Your browser does not support HTML5 video.
                 </video>
@@ -474,7 +474,7 @@
             <!-- Real 16:9 Long-Form Video Player Stage -->
             <div class="cinematic-video-player-wrapper">
               <div class="cinematic-player-frame launch-player-frame">
-                <video id="launch-promo-player" class="cinematic-video-element" controls playsinline loop muted preload="metadata" poster="assets/thumb-card3.jpg">
+                <video id="launch-promo-player" class="cinematic-video-element" controls playsinline loop muted preload="none" poster="assets/thumb-card3.jpg">
                   <source src="assets/video7.mp4" type="video/mp4">
                   Your browser does not support HTML5 video.
                 </video>
@@ -727,8 +727,8 @@
 
       <!-- Video Player Stage -->
       <div class="showcase-player-wrapper">
-        <video id="main-video-player" class="main-video-element" controls autoplay playsinline loop poster="assets/thumb-card2.jpg">
-          <source id="video-source" src="assets/video1.mp4" type="video/mp4">
+        <video id="main-video-player" class="main-video-element" controls playsinline loop poster="assets/thumb-card2.jpg" preload="none">
+          <source id="video-source" src="" type="video/mp4">
           Your browser does not support HTML5 video.
         </video>
       </div>
@@ -808,8 +808,8 @@
       <!-- High-res 9:16 Smartphone Theater Frame -->
       <div class="vertical-theater-phone">
         <div class="reel-phone-notch"></div>
-        <video id="theater-reel-player" class="theater-reel-video" controls autoplay playsinline loop>
-          <source id="theater-reel-source" src="assets/video5.mp4" type="video/mp4">
+        <video id="theater-reel-player" class="theater-reel-video" controls playsinline loop preload="none">
+          <source id="theater-reel-source" src="" type="video/mp4">
           Your browser does not support HTML5 video.
         </video>
       </div>
@@ -826,6 +826,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=2.5"></script>
+  <script src="app.js?v=3.0"></script>
 </body>
 </html>
