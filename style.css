@@ -2983,13 +2983,26 @@ input[type="range"]::-webkit-slider-thumb:hover {
   justify-content: center;
 }
 
-.main-video-element {
+.main-video-element,
+.media-embed-iframe {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
   outline: none;
   background: #000;
+  border: none;
+}
+
+.cinematic-player-frame iframe,
+.reel-phone-frame iframe,
+.vertical-theater-phone iframe,
+.showcase-player-wrapper iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+  border-radius: inherit;
 }
 
 /* Playlist / Video Switcher */

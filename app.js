@@ -443,46 +443,114 @@
     });
   }
 
+  // ========================================================
+  // 🎬 PORTFOLIO VIDEO CONFIGURATION (YOUTUBE OR LOCAL FILES)
+  // Paste any YouTube Video URL, YouTube Short, or local path here!
+  // ========================================================
+  window.PORTFOLIO_VIDEOS = window.PORTFOLIO_VIDEOS || {
+    // Works Modal Videos (16:9 Landscape)
+    project1: "assets/video1.mp4",
+    project2: "assets/video2.MOV",
+    project3: "assets/video3.MOV",
+
+    // Typography Card 1: 9:16 Vertical Reels / YouTube Shorts
+    reel01: "assets/video5.mp4",
+    reel02: "assets/video6.mp4",
+
+    // Typography Card 2: 16:9 Cinematic Titles Video
+    cinematicTitles: "assets/video4.MOV",
+
+    // Typography Card 3: 16:9 Long-Form YouTube Video
+    longForm: "assets/video7.mp4",
+  };
+
+  // Helper: Extract YouTube ID from any YouTube URL or direct ID
+  function extractYouTubeId(urlOrId) {
+    if (!urlOrId || typeof urlOrId !== "string") return null;
+    const trimmed = urlOrId.trim();
+    if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) {
+      return trimmed;
+    }
+    const shortsMatch = trimmed.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/);
+    if (shortsMatch) return shortsMatch[1];
+    const watchMatch = trimmed.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+    if (watchMatch) return watchMatch[1];
+    const youtuMatch = trimmed.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+    if (youtuMatch) return youtuMatch[1];
+    const embedMatch = trimmed.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/);
+    if (embedMatch) return embedMatch[1];
+    return null;
+  }
+
+  // Universal Media Renderer: Embeds YouTube iframe or HTML5 Video element
+  function renderMediaToContainer(container, src, options = {}) {
+    if (!container || !src) return;
+    const { autoplay = true, muted = false, loop = true, controls = true, poster = "" } = options;
+    const ytId = extractYouTubeId(src);
+
+    if (ytId) {
+      const autoPlayParam = autoplay ? "1" : "0";
+      const muteParam = muted ? "1" : "0";
+      const loopParam = loop ? `&loop=1&playlist=${ytId}` : "";
+      const controlsParam = controls ? "1" : "0";
+      const embedUrl = `https://www.youtube-nocookie.com/embed/${ytId}?autoplay=${autoPlayParam}&mute=${muteParam}&playsinline=1&rel=0&modestbranding=1&controls=${controlsParam}${loopParam}`;
+
+      container.innerHTML = `
+        <iframe 
+          class="media-embed-iframe" 
+          src="${embedUrl}" 
+          title="YouTube video player" 
+          frameborder="0" 
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+          allowfullscreen>
+        </iframe>
+      `;
+    } else {
+      const autoAttr = autoplay ? "autoplay" : "";
+      const muteAttr = muted ? "muted" : "";
+      const loopAttr = loop ? "loop" : "";
+      const ctrlAttr = controls ? "controls" : "";
+      const posterAttr = poster ? `poster="${poster}"` : "";
+
+      container.innerHTML = `
+        <video class="main-video-element" ${ctrlAttr} ${autoAttr} ${muteAttr} ${loopAttr} playsinline ${posterAttr}>
+          <source src="${src}" type="video/mp4">
+          <source src="${src}" type="video/quicktime">
+          Your browser does not support HTML5 video.
+        </video>
+      `;
+      const videoEl = container.querySelector("video");
+      if (videoEl && autoplay) {
+        const p = videoEl.play();
+        if (p) p.catch(() => {});
+      }
+    }
+  }
+
   // Cinematic Video Showcase Player Controller
   function initProjectModals() {
     const projectModal = document.getElementById("project-modal");
     const modalCloseBtn = document.getElementById("modal-close-btn");
     const openBtns = document.querySelectorAll(".btn-open-project-modal, #start-project-btn, #footer-showreel-btn");
     const playlistItems = document.querySelectorAll(".playlist-item-card");
-    const videoPlayer = document.getElementById("main-video-player");
-    const videoSource = document.getElementById("video-source");
+    const playerWrapper = document.querySelector(".showcase-player-wrapper");
     const mainTitle = document.getElementById("showcase-main-title");
     const mainDesc = document.getElementById("showcase-main-desc");
     const statusBadge = document.getElementById("showcase-status-badge");
 
     // Open Video Player Modal
     const openVideoModal = (src, poster, title, badge, desc) => {
-      if (src && videoPlayer) {
-        if (videoSource) videoSource.src = src;
-        videoPlayer.src = src;
-        if (poster) videoPlayer.poster = poster;
-        if (mainTitle && title) mainTitle.textContent = title;
-        if (statusBadge && badge) statusBadge.textContent = badge;
-        if (mainDesc && desc) mainDesc.textContent = desc;
-        videoPlayer.load();
-        const playPromise = videoPlayer.play();
-        if (playPromise !== undefined) {
-          playPromise.catch(() => {
-            // Auto-play was prevented, muted fallback or user will press play
-          });
-        }
+      if (mainTitle && title) mainTitle.textContent = title;
+      if (statusBadge && badge) statusBadge.textContent = badge;
+      if (mainDesc && desc) mainDesc.textContent = desc;
+
+      if (src && playerWrapper) {
+        renderMediaToContainer(playerWrapper, src, { autoplay: true, muted: false, loop: true, poster: poster });
       }
+
       if (projectModal) {
         projectModal.classList.add("open");
         document.body.style.overflow = "hidden";
-        const viralPlayer = document.getElementById("viral-reel-player");
-        if (viralPlayer) viralPlayer.pause();
-        const theaterPlayer = document.getElementById("theater-reel-player");
-        if (theaterPlayer) theaterPlayer.pause();
-        const cinematicPlayer = document.getElementById("cinematic-title-player");
-        if (cinematicPlayer) cinematicPlayer.pause();
-        const launchPlayer = document.getElementById("launch-promo-player");
-        if (launchPlayer) launchPlayer.pause();
       }
     };
 
@@ -492,25 +560,22 @@
         projectModal.classList.remove("open");
         document.body.style.overflow = "";
       }
-      if (videoPlayer) {
-        videoPlayer.pause();
+      if (playerWrapper) {
+        playerWrapper.innerHTML = "";
       }
     };
 
     openBtns.forEach((btn) => {
       btn.addEventListener("click", (e) => {
         if (e) e.preventDefault();
-        // Play active playlist item or default item
         const activeItem = document.querySelector(".playlist-item-card.active") || playlistItems[0];
         if (activeItem) {
-          const src = activeItem.getAttribute("data-video-src");
+          const src = activeItem.getAttribute("data-video-src") || window.PORTFOLIO_VIDEOS.project1;
           const poster = activeItem.getAttribute("data-poster");
           const title = activeItem.getAttribute("data-title");
           const badge = activeItem.getAttribute("data-badge");
           const desc = activeItem.getAttribute("data-desc");
           openVideoModal(src, poster, title, badge, desc);
-        } else {
-          openVideoModal();
         }
       });
     });
@@ -539,7 +604,7 @@
       });
     });
 
-    // Escape key closes modal & pauses video
+    // Escape key closes modal
     window.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
         closeVideoModal();
@@ -571,17 +636,24 @@
   // Viral Reel 9:16 Video Switcher & Theater Modal Controller
   function initViralReelSwitcher() {
     const reelTabs = document.querySelectorAll(".reel-tab-btn");
-    const viralPlayer = document.getElementById("viral-reel-player");
-    const viralSource = document.getElementById("viral-reel-source");
+    const reelContainer = document.querySelector(".reel-phone-frame");
     const expandBtn = document.getElementById("expand-reel-btn");
 
     const verticalModal = document.getElementById("vertical-reel-modal");
     const verticalCloseBtn = document.getElementById("vertical-modal-close-btn");
-    const theaterPlayer = document.getElementById("theater-reel-player");
-    const theaterSource = document.getElementById("theater-reel-source");
+    const theaterContainer = document.querySelector(".vertical-theater-phone");
     const theaterTabs = document.querySelectorAll(".theater-tab-btn");
 
-    let currentReelSrc = "assets/video5.mp4";
+    let currentReelSrc = window.PORTFOLIO_VIDEOS.reel01 || "assets/video5.mp4";
+
+    // Initialize Card 1 Phone Player if configured
+    const initCardReel = () => {
+      const activeTab = document.querySelector(".reel-tab-btn.active") || reelTabs[0];
+      if (activeTab) {
+        currentReelSrc = activeTab.getAttribute("data-src") || window.PORTFOLIO_VIDEOS.reel01;
+      }
+    };
+    initCardReel();
 
     // Card Reel Tabs
     reelTabs.forEach((tab, index) => {
@@ -589,15 +661,22 @@
         reelTabs.forEach((t) => t.classList.remove("active"));
         tab.classList.add("active");
 
-        const newSrc = tab.getAttribute("data-src");
-        if (newSrc && viralSource && viralPlayer) {
-          currentReelSrc = newSrc;
+        const newSrc = tab.getAttribute("data-src") || (index === 0 ? window.PORTFOLIO_VIDEOS.reel01 : window.PORTFOLIO_VIDEOS.reel02);
+        currentReelSrc = newSrc;
+
+        // If local video tag exists inside reel frame, update it
+        const viralPlayer = document.getElementById("viral-reel-player");
+        const viralSource = document.getElementById("viral-reel-source");
+        if (extractYouTubeId(newSrc)) {
+          // If YouTube Short, embed inside phone container
+          if (reelContainer) {
+            renderMediaToContainer(reelContainer, newSrc, { autoplay: true, muted: true, loop: true, controls: true });
+          }
+        } else if (viralPlayer && viralSource) {
           viralSource.setAttribute("src", newSrc);
           viralPlayer.load();
           const playPromise = viralPlayer.play();
-          if (playPromise !== undefined) {
-            playPromise.catch(() => {});
-          }
+          if (playPromise) playPromise.catch(() => {});
         }
 
         // Sync theater tabs if open
@@ -609,25 +688,10 @@
     });
 
     // Expand to Large 9:16 Theater Modal
-    if (expandBtn && verticalModal && theaterPlayer && theaterSource) {
+    if (expandBtn && verticalModal && theaterContainer) {
       expandBtn.addEventListener("click", (e) => {
         if (e) e.stopPropagation();
-        if (viralPlayer) viralPlayer.pause();
-        const mainVideoPlayer = document.getElementById("main-video-player");
-        if (mainVideoPlayer) mainVideoPlayer.pause();
-        const cinematicPlayer = document.getElementById("cinematic-title-player");
-        if (cinematicPlayer) cinematicPlayer.pause();
-        const launchPlayer = document.getElementById("launch-promo-player");
-        if (launchPlayer) launchPlayer.pause();
-
-        theaterSource.setAttribute("src", currentReelSrc);
-        theaterPlayer.load();
-        theaterPlayer.muted = false;
-        const playPromise = theaterPlayer.play();
-        if (playPromise !== undefined) {
-          playPromise.catch(() => {});
-        }
-
+        renderMediaToContainer(theaterContainer, currentReelSrc, { autoplay: true, muted: false, loop: true, controls: true });
         verticalModal.classList.add("open");
         document.body.style.overflow = "hidden";
       });
@@ -639,8 +703,13 @@
         verticalModal.classList.remove("open");
         document.body.style.overflow = "";
       }
-      if (theaterPlayer) {
-        theaterPlayer.pause();
+      if (theaterContainer) {
+        theaterContainer.innerHTML = `
+          <div class="reel-phone-notch"></div>
+          <video id="theater-reel-player" class="theater-reel-video" controls playsinline loop>
+            <source id="theater-reel-source" src="" type="video/mp4">
+          </video>
+        `;
       }
     };
 
@@ -658,35 +727,35 @@
         theaterTabs.forEach((t) => t.classList.remove("active"));
         tab.classList.add("active");
 
-        const newSrc = tab.getAttribute("data-src");
-        if (newSrc && theaterSource && theaterPlayer) {
-          currentReelSrc = newSrc;
-          theaterSource.setAttribute("src", newSrc);
-          theaterPlayer.load();
-          theaterPlayer.muted = false;
-          const playPromise = theaterPlayer.play();
-          if (playPromise !== undefined) {
-            playPromise.catch(() => {});
-          }
+        const newSrc = tab.getAttribute("data-src") || (index === 0 ? window.PORTFOLIO_VIDEOS.reel01 : window.PORTFOLIO_VIDEOS.reel02);
+        currentReelSrc = newSrc;
+
+        if (theaterContainer) {
+          renderMediaToContainer(theaterContainer, currentReelSrc, { autoplay: true, muted: false, loop: true, controls: true });
         }
 
         // Sync card tabs
         if (reelTabs[index]) {
           reelTabs.forEach((t) => t.classList.remove("active"));
           reelTabs[index].classList.add("active");
-          if (viralSource && viralPlayer) {
-            viralSource.setAttribute("src", newSrc);
-            viralPlayer.load();
-          }
         }
       });
     });
+  }
 
-    window.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") {
-        closeTheaterModal();
-      }
-    });
+  // Initialize Typography Video Card Players (Card 2 & Card 3)
+  function initTypographyCardPlayers() {
+    // Card 2: Cinematic Titles
+    const cinematicFrame = document.querySelector(".typo-cinematic-card:nth-child(2) .cinematic-player-frame");
+    if (cinematicFrame && extractYouTubeId(window.PORTFOLIO_VIDEOS.cinematicTitles)) {
+      renderMediaToContainer(cinematicFrame, window.PORTFOLIO_VIDEOS.cinematicTitles, { autoplay: true, muted: true, loop: true });
+    }
+
+    // Card 3: Long-Form Video Editing
+    const launchFrame = document.querySelector(".launch-player-frame");
+    if (launchFrame && extractYouTubeId(window.PORTFOLIO_VIDEOS.longForm)) {
+      renderMediaToContainer(launchFrame, window.PORTFOLIO_VIDEOS.longForm, { autoplay: true, muted: true, loop: true });
+    }
   }
 
   // Initialization
@@ -695,6 +764,7 @@
     initProjectModals();
     initTiltEffect();
     initViralReelSwitcher();
+    initTypographyCardPlayers();
     resizeCanvas();
     window.addEventListener("resize", resizeCanvas, { passive: true });
 
