@@ -450,15 +450,15 @@
   window.PORTFOLIO_VIDEOS = window.PORTFOLIO_VIDEOS || {
     // Works Modal Videos (16:9 Landscape)
     project1: "assets/video1.mp4",
-    project2: "assets/video2.MOV",
-    project3: "assets/video3.MOV",
+    project2: "assets/video2.mp4",
+    project3: "assets/video3.mp4",
 
     // Typography Card 1: 9:16 Vertical Reels / YouTube Shorts
     reel01: "assets/video5.mp4",
     reel02: "assets/video6.mp4",
 
     // Typography Card 2: 16:9 Cinematic Titles Video
-    cinematicTitles: "assets/video4.MOV",
+    cinematicTitles: "assets/video4.mp4",
 
     // Typography Card 3: 16:9 Long-Form YouTube Video
     longForm: "assets/video7.mp4",
