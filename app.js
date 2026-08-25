@@ -775,6 +775,27 @@
     }
   }
 
+  // Smart IntersectionObserver: Only plays video when visible on screen, pauses when scrolled out
+  function initSmartVideoObserver() {
+    const cardVideos = document.querySelectorAll(".reel-video-element, .cinematic-video-element");
+    if (!("IntersectionObserver" in window)) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      const modalOpen = document.querySelector(".project-modal-backdrop.open");
+      entries.forEach((entry) => {
+        const video = entry.target;
+        if (entry.isIntersecting && !modalOpen) {
+          const playPromise = video.play();
+          if (playPromise) playPromise.catch(() => {});
+        } else {
+          video.pause();
+        }
+      });
+    }, { threshold: 0.35 });
+
+    cardVideos.forEach((v) => observer.observe(v));
+  }
+
   // Initialization
   async function init() {
     initControls();
@@ -782,6 +803,7 @@
     initTiltEffect();
     initViralReelSwitcher();
     initTypographyCardPlayers();
+    initSmartVideoObserver();
     resizeCanvas();
     window.addEventListener("resize", resizeCanvas, { passive: true });
 
